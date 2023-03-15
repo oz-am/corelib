@@ -1,4 +1,4 @@
-package com.inflexit.core.domain.interactor
+package com.inflexit.core.interactor
 
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
