@@ -34,6 +34,7 @@ dependencies {
     implementation 'com.google.guava:guava:31.1-jre'
 
     implementation 'org.springframework.boot:spring-boot-starter-webflux:3.0.3'
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.11.2'
 }
 
 group = 'com.inflexit.core'

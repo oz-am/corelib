@@ -18,10 +18,26 @@ import kotlin.reflect.KClass
 
 class WebClientConfig {
 
-    var host:String = "localhost"
-    var port: Int = 80
-    var protocol: URLProtocol = URLProtocol.HTTPS
-    var headers: MultiValueMap<String, String> = LinkedMultiValueMap()
+    private var host:String = "localhost"
+    private var port: Int = 80
+    private var protocol: URLProtocol = URLProtocol.HTTPS
+    private var headers: MultiValueMap<String, String> = LinkedMultiValueMap()
+    private lateinit var consumer: ((HttpHeaders)->Unit)
+    private lateinit var client: WebClient
+
+    companion object{
+        fun create(
+            host: String? = null,
+            port: Int? = null,
+            protocol: URLProtocol? = null,
+            headers: MultiValueMap<String, String>? = null
+        ): WebClientConfig {
+            val clientConfig = WebClientConfig()
+            clientConfig.url(host, port, protocol, headers)
+            clientConfig.initClient()
+            return clientConfig
+        }
+    }
 
     private fun url(
         host: String? = null,
@@ -41,7 +57,7 @@ class WebClientConfig {
         }
     }
 
-    private val consumer = { it : HttpHeaders -> it.addAll(this.headers) } as Consumer<HttpHeaders>
+
 
     private val httpClient = HttpClient.create()
         .responseTimeout(Duration.ofSeconds(30))
@@ -52,23 +68,16 @@ class WebClientConfig {
 
     private val conector = ReactorClientHttpConnector(httpClient)
 
-    private val client = WebClient.builder()
-        .baseUrl("${this.protocol.name}://${this.host}:${this.port}")
-        .clientConnector(conector)
-        .defaultHeaders(consumer)
-        .build()
-
-    fun create(
-        host: String? = null,
-        port: Int? = null,
-        protocol: URLProtocol? = null,
-        headers: MultiValueMap<String, String>? = null
-    ): WebClientConfig {
-        url(host, port, protocol, headers)
-        return this
+    private fun initClient(){
+        consumer = { it : HttpHeaders -> it.addAll(this.headers) }
+        client = WebClient.builder()
+            .baseUrl("${this.protocol.name}://${this.host}:${this.port}")
+            .clientConnector(conector)
+            .defaultHeaders(consumer)
+            .build()
     }
 
-    fun <T : Any>handleResponse(response: ClientResponse, clazz: KClass<T>): Mono<Any>? {
+    private fun <T : Any>handleResponse(response: ClientResponse, clazz: KClass<T>): Mono<Any>? {
         if(response.statusCode().is2xxSuccessful)
             return response.bodyToMono(clazz.java)
         else if (response.statusCode().is4xxClientError)
