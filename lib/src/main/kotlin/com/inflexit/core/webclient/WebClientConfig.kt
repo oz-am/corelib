@@ -79,11 +79,11 @@ class WebClientConfig {
             .build()
     }
 
-    internal fun <T : Any>handleResponse(response: ClientResponse, clazz: KClass<T>): Mono<Any>? {
+    internal fun <O>handleResponse(response: ClientResponse, clazz: Class<O>): Mono<O>? {
 
 
         if(response.statusCode().is2xxSuccessful)
-            return response.bodyToMono(clazz.java)
+            return response.bodyToMono(clazz)
         else if (response.statusCode().is4xxClientError)
             return response
                 .bodyToMono(ApiError::class.java)

@@ -8,13 +8,13 @@ import kotlin.reflect.KClass
 
 class CallExecutor(val clientConfig: WebClientConfig) {
 
-    internal fun <O : Serializable> executeMono(output: WebClient.RequestHeadersSpec<*>, clazz: KClass<O>): O? {
+    internal fun <O> executeMono(output: WebClient.RequestHeadersSpec<*>, clazz: Class<O>): O? {
         return output
             .exchangeToMono { return@exchangeToMono clientConfig.handleResponse(it, clazz) }
             .onErrorResume{
                 throw it
             }
-            .cast(clazz.java)
+            .cast(clazz)
             .block()
     }
 }

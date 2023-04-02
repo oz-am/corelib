@@ -26,7 +26,7 @@ class Call(private val clientConfig: WebClientConfig) {
         }
     }
 
-    inline fun <reified O : Serializable> get(
+    inline fun <reified O : Any?> get(
         route: String,
         pathParams: Array<String>? = null,
         queryParams: MultiValueMap<String, String>?=null
@@ -35,15 +35,15 @@ class Call(private val clientConfig: WebClientConfig) {
             route,
             pathParams,
             queryParams,
-            O::class
+            O::class.java
         )
     }
 
-    fun <O : Serializable> get(
+    fun <O> get(
         route: String,
         pathParams: Array<String>? = null,
         queryParams: MultiValueMap<String, String>? = null,
-        clazz: KClass<O>
+        clazz: Class<O>
     ): O? {
         val output =  clientConfig
             .getClient()
@@ -54,21 +54,21 @@ class Call(private val clientConfig: WebClientConfig) {
         return callExecutor.executeMono(output, clazz)
     }
 
-    inline fun <reified O : Serializable> delete(
+    inline fun <reified O : Any?> delete(
         route: String,
         pathParams: Array<String>? = null,
     ): O? {
         return delete(
             route,
             pathParams,
-            O::class
+            O::class.java
         )
     }
 
-    fun <O : Serializable> delete(
+    fun <O> delete(
         route: String,
         pathParams: Array<String>? = null,
-        clazz: KClass<O>
+        clazz: Class<O>
     ): O? {
         val output =  clientConfig
             .getClient()
@@ -77,7 +77,7 @@ class Call(private val clientConfig: WebClientConfig) {
         return callExecutor.executeMono(output, clazz)
     }
 
-    inline fun <reified O : Serializable> post(
+    inline fun <reified O : Any?> post(
         route: String,
         body: Any?,
         pathParams: Array<String>? = null,
@@ -88,16 +88,16 @@ class Call(private val clientConfig: WebClientConfig) {
             body,
             pathParams,
             queryParams,
-            O::class
+            O::class.java
         )
     }
 
-    fun <O : Serializable> post(
+    fun <O> post(
         route: String,
         body: Any?,
         pathParams: Array<String>? = null,
         queryParams: MultiValueMap<String, String>? = null,
-        clazz: KClass<O>
+        clazz: Class<O>
     ): O? {
         val output = clientConfig
             .getClient()
