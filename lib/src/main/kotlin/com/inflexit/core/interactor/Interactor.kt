@@ -28,7 +28,7 @@ interface InteractorExecutor {
     ) = invoke(interactor, Unit, {}, responseConverter)
 }
 
-class UseCaseExecutorImpl : InteractorExecutor {
+class InteractorExecutorImpl : InteractorExecutor {
     override fun <RequestDto, ResponseDto, Request, Response> invoke(
         interactor: Interactor<Request, Response>,
         requestDto: RequestDto,
