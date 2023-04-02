@@ -1,5 +1,8 @@
 package com.inflexit.core.webclient
 
+import com.inflexit.core.exception.DomainException
+import com.inflexit.core.exception.NetworkInterchangeException
+import com.inflexit.core.exception.ServerException
 import com.inflexit.core.webclient.entities.ApiError
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.handler.timeout.WriteTimeoutHandler
@@ -8,12 +11,13 @@ import org.springframework.http.MediaType
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.util.MultiValueMap
+import org.springframework.web.reactive.function.BodyExtractor
 import org.springframework.web.reactive.function.client.ClientResponse
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.bodyToMono
 import reactor.core.publisher.Mono
 import reactor.netty.http.client.HttpClient
 import java.time.Duration
-import java.util.function.Consumer
 import kotlin.reflect.KClass
 
 class WebClientConfig {
@@ -31,11 +35,11 @@ class WebClientConfig {
             port: Int? = null,
             protocol: URLProtocol? = null,
             headers: MultiValueMap<String, String>? = null
-        ): WebClientConfig {
+        ): Call {
             val clientConfig = WebClientConfig()
             clientConfig.url(host, port, protocol, headers)
             clientConfig.initClient()
-            return clientConfig
+            return Call(clientConfig)
         }
     }
 
@@ -57,8 +61,6 @@ class WebClientConfig {
         }
     }
 
-
-
     private val httpClient = HttpClient.create()
         .responseTimeout(Duration.ofSeconds(30))
         .doOnConnected{con -> con
@@ -77,68 +79,25 @@ class WebClientConfig {
             .build()
     }
 
-    private fun <T : Any>handleResponse(response: ClientResponse, clazz: KClass<T>): Mono<Any>? {
+    internal fun <T : Any>handleResponse(response: ClientResponse, clazz: KClass<T>): Mono<Any>? {
+
+
         if(response.statusCode().is2xxSuccessful)
             return response.bodyToMono(clazz.java)
         else if (response.statusCode().is4xxClientError)
-            return response.bodyToMono(ApiError::class.java)
-        else
-            return Mono.just("Server error")
-    }
+            return response
+                .bodyToMono(ApiError::class.java)
+                .flatMap { errorBody ->
+                    Mono.error(NetworkInterchangeException(errorBody))
+                }
+        else{
+            val apiError = ApiError(
+                code = response.statusCode().value(),
+                message = "an error has been occured"
+            )
+            return Mono.error(ServerException(apiError))
+        }
 
-    //region HttpMethods
-
-    fun <T : Any> get(
-        route: String,
-        pathParams: Array<String>? = null,
-        queryParams: MultiValueMap<String, String>? = null,
-        clazz: KClass<T>
-    ): T? {
-        return client
-            .get()
-            .uri {
-                it.path(route)
-                queryParams?.let {params ->
-                    it.queryParams(params)
-                }
-                if(pathParams != null) {
-                    it.build(pathParams)
-                } else {
-                    it.build()
-                }
-            }
-            .exchangeToMono { return@exchangeToMono handleResponse(it, clazz) }
-            .cast(clazz.java)
-            .block()
     }
-
-    fun <T : Any> post(
-        route: String,
-        body: Any? = null,
-        pathParams: Array<String>? = null,
-        queryParams: MultiValueMap<String, String>? = null,
-        clazz: KClass<T>): T? {
-         return client
-            .post()
-            .uri{
-                it.path(route)
-                queryParams?.let {params ->
-                    it.queryParams(params)
-                }
-                if(pathParams != null) {
-                    it.build(pathParams)
-                } else {
-                    it.build()
-                }
-            }
-            .apply {
-                if(body != null){
-                    body(Mono.just(body), body::class.java)
-                }
-            }
-             .exchangeToMono { return@exchangeToMono handleResponse(it, clazz) }
-             .cast(clazz.java)
-             .block()
-    }
-    //endregion
+    internal fun getClient() = client
 }
