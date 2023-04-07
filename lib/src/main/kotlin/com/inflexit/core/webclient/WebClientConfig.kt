@@ -25,6 +25,7 @@ class WebClientConfig {
     private var host:String = "localhost"
     private var port: Int = 80
     private var protocol: URLProtocol = URLProtocol.HTTPS
+    private var path: String? = null
     private var headers: MultiValueMap<String, String> = LinkedMultiValueMap()
     private lateinit var consumer: ((HttpHeaders)->Unit)
     private lateinit var client: WebClient
@@ -34,10 +35,11 @@ class WebClientConfig {
             host: String? = null,
             port: Int? = null,
             protocol: URLProtocol? = null,
+            path: String? = null,
             headers: MultiValueMap<String, String>? = null
         ): Call {
             val clientConfig = WebClientConfig()
-            clientConfig.url(host, port, protocol, headers)
+            clientConfig.url(host, port, protocol, path, headers)
             clientConfig.initClient()
             return Call(clientConfig)
         }
@@ -47,10 +49,14 @@ class WebClientConfig {
         host: String? = null,
         port: Int? = null,
         protocol: URLProtocol? = null,
+        path: String? = null,
         headers: MultiValueMap<String, String>? = null
     ) {
         host?.let { this.host = it }
         port?.let { this.port = it }
+        path?.let {
+            this.path = if(path.startsWith("/")) path else "/$path"
+        }
         protocol?.let { this.protocol = it }
         headers?.let {
             this.headers = it
@@ -73,15 +79,13 @@ class WebClientConfig {
     private fun initClient(){
         consumer = { it : HttpHeaders -> it.addAll(this.headers) }
         client = WebClient.builder()
-            .baseUrl("${this.protocol.name}://${this.host}:${this.port}")
+            .baseUrl("${this.protocol.name}://${this.host}:${this.port}${this.path ?: ""}")
             .clientConnector(conector)
             .defaultHeaders(consumer)
             .build()
     }
 
     internal fun <O>handleResponse(response: ClientResponse, clazz: Class<O>): Mono<O>? {
-
-
         if(response.statusCode().is2xxSuccessful)
             return response.bodyToMono(clazz)
         else if (response.statusCode().is4xxClientError)
