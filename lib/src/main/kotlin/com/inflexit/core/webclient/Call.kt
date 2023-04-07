@@ -1,6 +1,9 @@
 package com.inflexit.core.webclient
 
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.util.MultiValueMap
+import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.util.UriBuilder
 import reactor.core.publisher.Mono
 import java.io.Serializable
@@ -25,6 +28,11 @@ class Call(private val clientConfig: WebClientConfig) {
             builder.build()
         }
     }
+
+    private fun isFormDataContentType(contentType: String?) = contentType in listOf(
+            MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+            MediaType.MULTIPART_FORM_DATA_VALUE
+        )
 
     inline fun <reified O : Any?> get(
         route: String,
@@ -79,15 +87,35 @@ class Call(private val clientConfig: WebClientConfig) {
 
     inline fun <reified O : Any?> post(
         route: String,
-        body: Any?,
+        body: Serializable?,
         pathParams: Array<String>? = null,
-        queryParams: MultiValueMap<String, String>? = null
+        queryParams: MultiValueMap<String, String>? = null,
+        headers: MultiValueMap<String, String>? = null,
     ): O? {
         return post(
             route,
             body,
             pathParams,
             queryParams,
+            headers,
+            O::class.java
+        )
+    }
+
+    inline fun <reified O : Any?> post(
+        route: String,
+        body: MultiValueMap<String, String>,
+        pathParams: Array<String>? = null,
+        queryParams: MultiValueMap<String, String>? = null,
+        headers: MultiValueMap<String, String>? = null,
+    ): O? {
+
+        return post(
+            route,
+            body,
+            pathParams,
+            queryParams,
+            headers,
             O::class.java
         )
     }
@@ -97,17 +125,21 @@ class Call(private val clientConfig: WebClientConfig) {
         body: Any?,
         pathParams: Array<String>? = null,
         queryParams: MultiValueMap<String, String>? = null,
+        headers: MultiValueMap<String, String>? = null,
         clazz: Class<O>
     ): O? {
         val output = clientConfig
             .getClient()
             .post()
             .apply {
-                if(body != null){
-                    body(Mono.just(body), body::class.java)
+                if(isFormDataContentType(headers?.getFirst(HttpHeaders.CONTENT_TYPE))){
+                    body(BodyInserters.fromFormData(body as MultiValueMap<String, String>))
+                } else if(body != null){
+                    body(body, body::class.java)
                 }
             }
             .uri{buildUri(it,route,pathParams,queryParams)}
+            .headers { it : HttpHeaders -> headers?.let { _ -> it.addAll(headers) } }
 
         return callExecutor.executeMono(output, clazz)
     }
