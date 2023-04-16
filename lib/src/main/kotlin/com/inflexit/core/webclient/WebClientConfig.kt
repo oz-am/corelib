@@ -29,6 +29,7 @@ class WebClientConfig {
     private var headers: MultiValueMap<String, String> = LinkedMultiValueMap()
     private lateinit var consumer: ((HttpHeaders)->Unit)
     private lateinit var client: WebClient
+    private var errorClass: Class<*>? = null
 
     companion object{
         fun create(
@@ -36,11 +37,13 @@ class WebClientConfig {
             port: Int? = null,
             protocol: URLProtocol? = null,
             path: String? = null,
-            headers: MultiValueMap<String, String>? = null
+            headers: MultiValueMap<String, String>? = null,
+            errorClass: Class<*>? = null
         ): Call {
             val clientConfig = WebClientConfig()
             clientConfig.url(host, port, protocol, path, headers)
             clientConfig.initClient()
+            clientConfig.errorClass = errorClass
             return Call(clientConfig)
         }
     }
@@ -77,9 +80,10 @@ class WebClientConfig {
     private val conector = ReactorClientHttpConnector(httpClient)
 
     private fun initClient(){
+        val baseUrl = "${this.protocol.name}://${this.host}:${this.port}${this.path ?: ""}"
         consumer = { it : HttpHeaders -> it.addAll(this.headers) }
         client = WebClient.builder()
-            .baseUrl("${this.protocol.name}://${this.host}:${this.port}${this.path ?: ""}")
+            .baseUrl(baseUrl)
             .clientConnector(conector)
             .defaultHeaders(consumer)
             .build()
