@@ -7,7 +7,6 @@ import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.util.UriBuilder
 import reactor.core.publisher.Mono
 import java.io.Serializable
-import kotlin.reflect.KClass
 
 class Call(private val clientConfig: WebClientConfig) {
 
@@ -135,7 +134,7 @@ class Call(private val clientConfig: WebClientConfig) {
                 if(isFormDataContentType(headers?.getFirst(HttpHeaders.CONTENT_TYPE))){
                     body(BodyInserters.fromFormData(body as MultiValueMap<String, String>))
                 } else if(body != null){
-                    body(body, body::class.java)
+                    body(Mono.just(body), body::class.java)
                 }
             }
             .uri{buildUri(it,route,pathParams,queryParams)}

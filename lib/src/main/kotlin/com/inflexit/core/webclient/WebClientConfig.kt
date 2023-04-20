@@ -96,6 +96,7 @@ class WebClientConfig {
             return response
                 .bodyToMono(ApiError::class.java)
                 .flatMap { errorBody ->
+                    errorBody.code = response.statusCode().value()
                     Mono.error(NetworkInterchangeException(errorBody))
                 }
         else{
